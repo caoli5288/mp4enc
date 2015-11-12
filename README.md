@@ -85,10 +85,10 @@ STAMP=$(date +%s)
 
 # Encode video stream with ffmpeg(libx264).
 if [[ $BITRATE ]]; then
-  ffmpeg -y -i $INPUT -an -pass 1 -b $BITRATE -vcodec libx264 -passlogfile .$STAMP.log -tune ${TUNE:-'psnr'} .$STAMP.mp4 || exit 4
-  ffmpeg -y -i $INPUT -an -pass 2 -b $BITRATE -vcodec libx264 -passlogfile .$STAMP.log -tune ${TUNE:-'psnr'} -preset ${PRESET:-'slower'} .$STAMP.mp4
+  ffmpeg -y -i $INPUT -an -pass 1 -b $BITRATE ${SIZE:+-s $SIZE} -vcodec libx264 -passlogfile .$STAMP.log -tune ${TUNE:-'psnr'} .$STAMP.mp4 || exit 4
+  ffmpeg -y -i $INPUT -an -pass 2 -b $BITRATE ${SIZE:+-s $SIZE} -vcodec libx264 -passlogfile .$STAMP.log -tune ${TUNE:-'psnr'} -preset ${PRESET:-'slower'} .$STAMP.mp4
 else
-  ffmpeg -y -i $INPUT -an -vcodec libx264 -crf ${CRF:-'23'} -preset ${PRESET:-'slower'} -tune ${TUNE:-'psnr'} .$STAMP.mp4 || exit 4
+  ffmpeg -y -i $INPUT -an -vcodec libx264 ${SIZE:+-s $SIZE} -crf ${CRF:-'23'} -preset ${PRESET:-'slower'} -tune ${TUNE:-'psnr'} .$STAMP.mp4 || exit 4
 fi
 
 # Encode audio stream with nero's aac encoder.
