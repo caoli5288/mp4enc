@@ -98,7 +98,7 @@ ffmpeg -i $INPUT -vn -f wav - | neroAacEnc -q ${QUALITY:-'0.3'} -ignorelength -i
 if [ -f .$STAMP.m4a ]; then
   ffmpeg -i .$STAMP.mp4 -i .$STAMP.m4a -vcodec copy -acodec copy ${OUTPUT:-${INPUT%\.*}.mp4}
 else
-  mv .$STAMP.mp4 ${OUTPUT:-${INPUT%\.*}.mp4}
+  ffmpeg -i .$STAMP.mp4 -vcodec copy ${OUTPUT:-${INPUT%\.*}.mp4}
 fi
 
 # Clean up.
