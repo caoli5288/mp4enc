@@ -14,10 +14,10 @@ Put those bin file into your PATH folder.
 ## Usage
 All line here. Put it into a file and make it executable.
 ```Bash
-#!/bin/bash
+#!/bin/bash 
 
 if [[ $@ ]]; then
-  opt=$(getopt -u -o b:c:i:p:t:q:o: --long crf:,preset:,tune: -n 'mp4enc' -- $@)
+  opt=$(getopt -u -o b:c:i:p:t:q:o:s: --long crf:,preset:,tune:,size -n 'mp4enc' -- $@)
   if (($? == 0)); then
     set -- ${opt}
   else
@@ -31,6 +31,7 @@ else
   echo '  -p, --preset      The video encoder preset. Default "slower".'
   echo '  -t, --tune        The video encoder tune. Default "psnr".'
   echo '  -b                The video bitrate value.'
+  echo '  -s, --size        The video size. Default original.'
   echo ''
   echo 'The encoder will work on CRF mode if bitrate not set.'
   echo 'More info on https://github.com/caoli5288/mp4enc.'
@@ -63,6 +64,10 @@ while [[ $@ ]]; do
       PRESET=$2
       shift 2
       ;;
+    -s|--size)
+      SIZE=$2
+      shift 2
+      ;;
     -t|--tune)
       TUNE=$2
       shift 2
@@ -83,6 +88,9 @@ fi
 
 STAMP=$(date +%s)
 
+# Temp file clean up.
+trap "rm -f .$STAMP.*" EXIT
+
 # Encode video stream with ffmpeg(libx264).
 if [[ $BITRATE ]]; then
   ffmpeg -y -i $INPUT -an -pass 1 -b $BITRATE ${SIZE:+-s $SIZE} -vcodec libx264 -passlogfile .$STAMP.log -tune ${TUNE:-'psnr'} .$STAMP.mp4 || exit 4
@@ -100,7 +108,4 @@ if [ -f .$STAMP.m4a ]; then
 else
   ffmpeg -i .$STAMP.mp4 -vcodec copy ${OUTPUT:-${INPUT%\.*}.mp4}
 fi
-
-# Clean up.
-rm -f .$STAMP.*
 ```
