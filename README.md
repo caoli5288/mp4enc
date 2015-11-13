@@ -17,21 +17,22 @@ All line here. Put it into a file and make it executable.
 #!/bin/bash 
 
 if [[ $@ ]]; then
-  opt=$(getopt -u -o b:c:i:p:t:q:o:s: --long crf:,preset:,tune:,size -n 'mp4enc' -- $@)
+  OPT=$(getopt -u -o ab:c:i:p:t:q:o:s: --long crf:,preset:,tune:,size -n 'mp4enc' -- $@)
   if (($? == 0)); then
     set -- ${opt}
   else
     exit 1
   fi
-  unset opt
+  unset OPT
 else
   echo 'Usage: ./mp4enc [option]... -i <input> [-o <output>]'
-  echo '  -q                The audio target quality. Default 0.3.'
+  echo '  -a                The audio stream will not be encoded(copy).'
+  echo '  -b                The video bitrate value.'
   echo '  -c, --crf         The video CRF value. Default 23.'
   echo '  -p, --preset      The video encoder preset. Default "slower".'
-  echo '  -t, --tune        The video encoder tune. Default "psnr".'
-  echo '  -b                The video bitrate value.'
+  echo '  -q                The audio target quality. Default 0.3.'
   echo '  -s, --size        The video size. Default original.'
+  echo '  -t, --tune        The video encoder tune. Default "psnr".'
   echo ''
   echo 'The encoder will work on CRF mode if bitrate not set.'
   echo 'More info on https://github.com/caoli5288/mp4enc.'
@@ -40,6 +41,10 @@ fi
 
 while [[ $@ ]]; do
   case $1 in
+    -a)
+      A_COPY=YES
+      shift 1
+      ;;
     -o)
       OUTPUT=$2
       shift 2
@@ -93,19 +98,23 @@ trap "rm -f .$STAMP.*" EXIT
 
 # Encode video stream with ffmpeg(libx264).
 if [[ $BITRATE ]]; then
-  ffmpeg -y -i $INPUT -an -pass 1 -b $BITRATE ${SIZE:+-s $SIZE} -vcodec libx264 -passlogfile .$STAMP.log -tune ${TUNE:-'psnr'} .$STAMP.mp4 || exit 4
-  ffmpeg -y -i $INPUT -an -pass 2 -b $BITRATE ${SIZE:+-s $SIZE} -vcodec libx264 -passlogfile .$STAMP.log -tune ${TUNE:-'psnr'} -preset ${PRESET:-'slower'} .$STAMP.mp4
+  ffmpeg -i $INPUT -an ${SIZE:+-s $SIZE} -pass 1 -b $BITRATE -vcodec libx264 -passlogfile .$STAMP.log -tune ${TUNE:-'psnr'} .$STAMP.mp4 || exit 4
+  ffmpeg -y -i $INPUT -an ${SIZE:+-s $SIZE} -pass 2 -b $BITRATE -vcodec libx264 -passlogfile .$STAMP.log -tune ${TUNE:-'psnr'} -preset ${PRESET:-'slower'} .$STAMP.mp4
 else
-  ffmpeg -y -i $INPUT -an -vcodec libx264 ${SIZE:+-s $SIZE} -crf ${CRF:-'23'} -preset ${PRESET:-'slower'} -tune ${TUNE:-'psnr'} .$STAMP.mp4 || exit 4
+  ffmpeg -i $INPUT -an ${SIZE:+-s $SIZE} -vcodec libx264 -crf ${CRF:-'23'} -preset ${PRESET:-'slower'} -tune ${TUNE:-'psnr'} .$STAMP.mp4 || exit 4
 fi
 
 # Encode audio stream with nero's aac encoder.
-ffmpeg -i $INPUT -vn -f wav - | neroAacEnc -q ${QUALITY:-'0.3'} -ignorelength -if - -of .$STAMP.m4a
+if [[ $A_COPY ]]; then
+  ffmpeg -i $INPUT -vn -acodec copy .$STAMP.m4a
+else
+  ffmpeg -i $INPUT -vn -f wav - | neroAacEnc -q ${QUALITY:-'0.3'} -ignorelength -if - -of .$STAMP.m4a
+fi
 
 # Mix video and audio stream(s).
 if [ -f .$STAMP.m4a ]; then
-  ffmpeg -i .$STAMP.mp4 -i .$STAMP.m4a -vcodec copy -acodec copy ${OUTPUT:-${INPUT%\.*}.mp4}
+  ffmpeg -y -i .$STAMP.mp4 -i .$STAMP.m4a -vcodec copy -acodec copy ${OUTPUT:-${INPUT%\.*}.mp4}
 else
-  ffmpeg -i .$STAMP.mp4 -vcodec copy ${OUTPUT:-${INPUT%\.*}.mp4}
+  ffmpeg -y -i .$STAMP.mp4 -vcodec copy ${OUTPUT:-${INPUT%\.*}.mp4}
 fi
 ```
