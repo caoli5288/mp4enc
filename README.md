@@ -19,7 +19,7 @@ All line here. Put it into a file and make it executable.
 if [[ $@ ]]; then
   OPT=$(getopt -u -o ab:c:i:p:t:q:o:s: --long crf:,preset:,tune:,size -n 'mp4enc' -- $@)
   if (($? == 0)); then
-    set -- ${opt}
+    set -- ${OPT}
   else
     exit 1
   fi
