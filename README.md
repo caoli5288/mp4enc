@@ -5,6 +5,7 @@ This is a simple bash script convert media to mp4 format. About [noise reduce](h
 Put those bin file into your PATH folder.
 - [FFmpeg](http://www.ffmpeg.org/)
 - [Nero AAC Codec](http://www.nero.com/enu/company/about-nero/nero-aac-codec.php)
+- [FAAC(optional)](http://www.audiocoding.com/faac.html)
 
 ## Example
 - ./mp4enc -b 1500k -i mov.avi
@@ -52,15 +53,6 @@ FAAC_AAC=$(which faac 2> /dev/null)
 if [[ ! $FFMPEG ]]; then
   echo 'FFmpeg NOT found!'
   exit 3
-elif [[ ! $NERO_AAC ]]; then
-  echo 'Nero AAC Encoder NOT found!'
-  if [[ ! $FAAC_AAC ]]; then
-    echo 'FAAC Encoder NOT found!'
-    exit 4
-  else
-    echo 'FAAC Encoder was found!'
-    USE_FAAC=TRUE
-  fi
 fi
 
 while [[ $@ ]]; do
@@ -113,6 +105,19 @@ while [[ $@ ]]; do
       ;;
   esac
 done
+
+if [[ ! $NERO_AAC ]]; then
+  echo 'Nero AAC Encoder NOT found!'
+  if [[ ! $FAAC_AAC ]]; then
+    echo 'FAAC Encoder NOT found!'
+    if [[ ! A_COPY ]]; then
+      exit 4
+    fi
+  else
+    echo 'FAAC Encoder was found!'
+    USE_FAAC=TRUE
+  fi
+fi
 
 if [[ ! $INPUT ]] || [ ! -f $INPUT ]; then
   echo 'You must specify a input file!'
