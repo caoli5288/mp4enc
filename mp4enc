@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $@ ]; then
+if [[ $@ ]]; then
   OPT=$(getopt -u -o ab:c:n:i:p:t:q:o:s: --long crf:,preset:,tune:,size:,test,codec: -n 'mp4enc' -- $@)
   if (($? == 0)); then
     set -- ${OPT}
@@ -22,8 +22,8 @@ else
   echo '  -q           The audio target quality(default).'
   echo '  -s, --size   The video size. Syntax like "800x600".'
   echo '  -t, --tune   The video encoder tune. It can be film, animation,'
-  echo '               grain, stillimage, psnr(default).'
-  echo '               ssim, fastdecode, zerolatency and touhou.'
+  echo '               grain, stillimage, psnr, ssim, fastdecode,'
+  echo '               zerolatency and touhou(default none).'
   echo '      --test   Test the first 30s stream(s).'
   echo ''
   echo 'The encoder will work on CRF mode if bitrate not set.'
@@ -40,7 +40,7 @@ if [ ! $FFMPEG ]; then
   exit 3
 fi
 
-while [ $@ ]; do
+while [[ $@ ]]; do
   case $1 in
     -a)
       A_COPY=1
@@ -118,7 +118,7 @@ if [ ! $INPUT ] || [ ! -f $INPUT ]; then
 fi
 
 # Set default preset for libx265.
-if [ ! $PRESET ] && [ $CODEC = "libx265" ]; then
+if [[ ! $PRESET && $CODEC = "libx265" ]]; then
   PRESET='medium'
 fi
 
@@ -129,22 +129,42 @@ trap "rm -f .$STAMP.*" EXIT
 
 # Encode video stream with ffmpeg(libx264).
 if [ $BITRATE ]; then
-  ffmpeg -i $INPUT -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} -pass 1 \
-         -b $BITRATE -vcodec ${CODEC:-'libx264'} -passlogfile .$STAMP.log -tune ${TUNE:-'psnr'} .$STAMP.mp4 || exit 5
-  ffmpeg -y -i $INPUT -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} -pass 2 \
-         -b $BITRATE -vcodec ${CODEC:-'libx264'} -passlogfile .$STAMP.log -tune ${TUNE:-'psnr'} -preset ${PRESET:-'slower'} .$STAMP.mp4
+  ffmpeg -i $INPUT \
+    -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} \
+    -pass 1 \
+    -b $BITRATE \
+    -vcodec ${CODEC:-'libx264'} \
+    -passlogfile .$STAMP.log ${TUNE:+-tune $TUNE} .$STAMP.mp4 || exit 5
+  ffmpeg -y -i $INPUT \
+    -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} \
+    -pass 2 \
+    -b $BITRATE \
+    -vcodec ${CODEC:-'libx264'} \
+    -passlogfile .$STAMP.log \
+    -preset ${PRESET:-'slower'} ${TUNE:+-tune $TUNE} .$STAMP.mp4 || exit 5
 else
-  ffmpeg -i $INPUT -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} -vcodec ${CODEC:-'libx264'} \
-         -crf ${CRF:-'23'} -preset ${PRESET:-'slower'} -tune ${TUNE:-'psnr'} .$STAMP.mp4 || exit 5
+  ffmpeg -i $INPUT \
+    -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} \
+    -vcodec ${CODEC:-'libx264'} \
+    -crf ${CRF:-'23'} \
+    -preset ${PRESET:-'slower'} ${TUNE:+-tune $TUNE} .$STAMP.mp4 || exit 5
 fi
+
+function _audio_enc_nero() {
+    neroAacEnc -q ${QUALITY:-'0.3'} -ignorelength -if - -of .$STAMP.m4a
+}
+
+function _audio_enc_faac() {
+    faac -o .$STAMP.m4a -
+}
 
 # Encode audio stream with nero's aac encoder.
 if [ $A_COPY ]; then
   ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -acodec copy .$STAMP.m4a
 elif [ $USE_FAAC ] ;then
-  ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -f wav - | faac -o .$STAMP.m4a -
+  ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -f wav - | _audio_enc_faac
 else
-  ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -f wav - | neroAacEnc -q ${QUALITY:-'0.3'} -ignorelength -if - -of .$STAMP.m4a
+  ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -f wav - | _audio_enc_nero
 fi
 
 # Mix video and audio stream(s).
