@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [[ $@ ]]; then
+if [ $@ ]; then
   OPT=$(getopt -u -o ab:c:n:i:p:t:q:o:s: --long crf:,preset:,tune:,size:,test,codec: -n 'mp4enc' -- $@)
   if (($? == 0)); then
     set -- ${OPT}
@@ -13,17 +13,18 @@ else
   echo '  -a           The audio stream will not be encoded(copy direct).'
   echo '  -b           The video bitrate value. Syntax like "1536k".'
   echo '  -c, --crf    The video CRF value. A float like 23(default).'
+  echo '      --codec  What library used to encode vedio(libx264 default).'
   echo '  -n           The video noise reduce. Valid rage 0-10000.'
   echo '  -p, --preset The video encoder preset. It can be ultrafast,'
   echo '               superfast, veryfast, faster, fast,'
-  echo '               medium, slow, slower(default), veryslow and placebo.'
+  echo '               medium(libx265 default), slow, slower(default),'
+  echo '               veryslow and placebo.'
   echo '  -q           The audio target quality(default).'
   echo '  -s, --size   The video size. Syntax like "800x600".'
   echo '  -t, --tune   The video encoder tune. It can be film, animation,'
-  echo '               grain, stillimage, psnr(default none).'
+  echo '               grain, stillimage, psnr(default).'
   echo '               ssim, fastdecode, zerolatency and touhou.'
   echo '      --test   Test the first 30s stream(s).'
-  echo '      --codec  What library used to encode vedio(libx264 default).'
   echo ''
   echo 'The encoder will work on CRF mode if bitrate not set.'
   echo 'More info on https://github.com/caoli5288/mp4enc.'
@@ -34,15 +35,15 @@ FFMPEG=$(which ffmpeg 2> /dev/null)
 NERO_AAC=$(which neroAacEnc 2> /dev/null)
 FAAC_AAC=$(which faac 2> /dev/null)
 
-if [[ ! $FFMPEG ]]; then
+if [ ! $FFMPEG ]; then
   echo 'FFmpeg NOT found!'
   exit 3
 fi
 
-while [[ $@ ]]; do
+while [ $@ ]; do
   case $1 in
     -a)
-      A_COPY=YES
+      A_COPY=1
       shift 1
       ;;
     -o)
@@ -98,22 +99,27 @@ while [[ $@ ]]; do
   esac
 done
 
-if [[ ! $NERO_AAC ]]; then
+if [ ! $NERO_AAC ]; then
   echo 'Nero AAC Encoder NOT found!'
-  if [[ ! $FAAC_AAC ]]; then
+  if [ ! $FAAC_AAC ]; then
     echo 'FAAC Encoder NOT found!'
-    if [[ ! A_COPY ]]; then
+    if [ ! A_COPY ]; then
       exit 4
     fi
   else
     echo 'FAAC Encoder was found!'
-    USE_FAAC=TRUE
+    USE_FAAC=1
   fi
 fi
 
-if [[ ! $INPUT ]] || [ ! -f $INPUT ]; then
+if [ ! $INPUT ] || [ ! -f $INPUT ]; then
   echo 'You must specify a input file!'
   exit '3'
+fi
+
+# Set default preset for libx265.
+if [ ! $PRESET ] && [ $CODEC = "libx265" ]; then
+  PRESET='medium'
 fi
 
 STAMP=$(date +%s)
@@ -122,17 +128,20 @@ STAMP=$(date +%s)
 trap "rm -f .$STAMP.*" EXIT
 
 # Encode video stream with ffmpeg(libx264).
-if [[ $BITRATE ]]; then
-  ffmpeg -i $INPUT -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} -pass 1 -b $BITRATE -vcodec ${CODEC:-'libx264'} -passlogfile .$STAMP.log ${TUNE:+-tune $TUNE} .$STAMP.mp4 || exit 5
-  ffmpeg -y -i $INPUT -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} -pass 2 -b $BITRATE -vcodec ${CODEC:-'libx264'} -passlogfile .$STAMP.log ${TUNE:+-tune $TUNE} -preset ${PRESET:-'slower'} .$STAMP.mp4
+if [ $BITRATE ]; then
+  ffmpeg -i $INPUT -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} -pass 1 \
+         -b $BITRATE -vcodec ${CODEC:-'libx264'} -passlogfile .$STAMP.log -tune ${TUNE:-'psnr'} .$STAMP.mp4 || exit 5
+  ffmpeg -y -i $INPUT -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} -pass 2 \
+         -b $BITRATE -vcodec ${CODEC:-'libx264'} -passlogfile .$STAMP.log -tune ${TUNE:-'psnr'} -preset ${PRESET:-'slower'} .$STAMP.mp4
 else
-  ffmpeg -i $INPUT -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} -vcodec ${CODEC:-'libx264'} -crf ${CRF:-'23'} -preset ${PRESET:-'slower'} ${TUNE:+-tune $TUNE} .$STAMP.mp4 || exit 5
+  ffmpeg -i $INPUT -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} -vcodec ${CODEC:-'libx264'} \
+         -crf ${CRF:-'23'} -preset ${PRESET:-'slower'} -tune ${TUNE:-'psnr'} .$STAMP.mp4 || exit 5
 fi
 
 # Encode audio stream with nero's aac encoder.
-if [[ $A_COPY ]]; then
+if [ $A_COPY ]; then
   ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -acodec copy .$STAMP.m4a
-elif [[ $USE_FAAC ]] ;then
+elif [ $USE_FAAC ] ;then
   ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -f wav - | faac -o .$STAMP.m4a -
 else
   ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -f wav - | neroAacEnc -q ${QUALITY:-'0.3'} -ignorelength -if - -of .$STAMP.m4a
@@ -144,4 +153,3 @@ if [ -f .$STAMP.m4a ]; then
 else
   ffmpeg -y -i .$STAMP.mp4 -vcodec copy ${OUTPUT:-${INPUT%\.*}.mp4}
 fi
-
