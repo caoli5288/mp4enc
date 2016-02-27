@@ -5,7 +5,6 @@ This is a simple bash script convert media to mp4 format. About [noise reduce](h
 Put those bin file into your PATH folder.
 - [FFmpeg](http://www.ffmpeg.org/)
 - [Nero AAC Codec](http://www.nero.com/enu/company/about-nero/nero-aac-codec.php)
-- [FAAC(optional)](http://www.audiocoding.com/faac.html)
 
 ## Usage
 ```
