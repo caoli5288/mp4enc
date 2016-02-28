@@ -4,27 +4,31 @@ OPT="ab:c:n:i:p:t:q:o:s:"
 OPT_LONG="crf:,preset:,tune:,size:,test,codec:"
 
 if [[ ! $@ ]]; then
-    echo './mp4enc [option]... -i <input> [-o <output>]'
+    echo '$ mp4enc [option]... -i <input> [-o <output>]'
     echo '    -a           The audio stream will not be encoded(copy direct).'
     echo '    -b           The video bitrate value. Syntax like "1536k".'
-    echo '    -c, --crf    The video CRF value. A float like 25(default).'
-    echo '        --codec  What library used to encode vedio(libx264 default).'
+    echo '    -c, --crf    The video CRF value. A float like 24(default).'
+    echo '        --codec  What library used to encode vedio(default libx264).'
     echo '    -n           The video noise reduce. Valid rage 0-10000.'
     echo '    -p, --preset The video encoder preset. It can be ultrafast,'
     echo '                 superfast, veryfast, faster, fast,'
-    echo '                 medium(libx265 default), slow, slower(default),'
-    echo '                 veryslow and placebo.'
+    echo '                 medium, slow, slower,'
+    echo '                 veryslow(default) and placebo.'
     echo '    -q           The audio target quality(default 0.3).'
     echo '    -s, --size   The video size. Syntax like "800x600".'
     echo '    -t, --tune   The video encoder tune. It can be film, animation,'
     echo '                 grain, stillimage, psnr, ssim, fastdecode,'
     echo '                 zerolatency and touhou(default none).'
     echo '        --test   Test the first 30s stream(s).'
-    echo ''
+    echo
     echo 'The encoder will work on CRF mode if bitrate not set.'
     echo 'More info on https://github.com/caoli5288/mp4enc.'
 else
     set -- `getopt -q -u -o $OPT --long $OPT_LONG -n 'mp4enc' -- $@`
+fi
+
+if [[ ! $@ ]]; then
+    exit 1
 fi
 
 FFMPEG=$(which ffmpeg 2> /dev/null)
@@ -118,13 +122,13 @@ if [ $BITRATE ]; then
         -b $BITRATE \
         -vcodec ${CODEC:-'libx264'} \
         -passlogfile .$STAMP.log ${TUNE:+-tune $TUNE} \
-        -preset ${PRESET:-'slower'} .$STAMP.mp4 || exit 5
+        -preset ${PRESET:-'veryslow'} .$STAMP.mp4 || exit 5
 else
     ffmpeg -i $INPUT \
         -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} \
         -vcodec ${CODEC:-'libx264'} \
-        -crf ${CRF:-'25'} \
-        -preset ${PRESET:-'slower'} ${TUNE:+-tune $TUNE} .$STAMP.mp4 || exit 5
+        -crf ${CRF:-'24'} \
+        -preset ${PRESET:-'veryslow'} ${TUNE:+-tune $TUNE} .$STAMP.mp4 || exit 5
 fi
 
 function _audio_enc_nero() {
