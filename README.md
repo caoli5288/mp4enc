@@ -8,22 +8,23 @@ Put those bin file into your PATH folder.
 
 ## Usage
 ```
-$ mp4enc 
-Usage: mp4enc [option]... -i <input> [-o <output>]
-  -a           The audio stream will not be encoded(copy direct).
-  -b           The video bitrate value. Syntax like "1536k".
-  -c, --crf    The video CRF value. A float like 23(default).
-  -n           The video noise reduce. Valid rage 0-10000.
-  -p, --preset The video encoder preset. It can be ultrafast,
-               superfast, veryfast, faster, fast,
-               medium, slow, slower(default), veryslow and placebo.
-  -q           The audio target quality(default).
-  -s, --size   The video size. Syntax like "800x600".
-  -t, --tune   The video encoder tune. It can be film, animation,
-               grain, stillimage, psnr(default none).
-               ssim, fastdecode, zerolatency and touhou.
-      --test   Test the first 30s stream(s).
-      --codec  What library used to encode vedio(libx264 default).
+$ mp4enc [option]... -i <input> [-o <output>]
+    -a           The audio stream will not be encoded(copy direct).
+    -b           The video bitrate value. Syntax like "1536k".
+    -c, --crf    The video CRF value. A float like 24(default).
+        --codec  What library used to encode vedio(default libx264).
+    -n           The video noise reduce. Valid rage 0-10000.
+    -p, --preset The video encoder preset. It can be ultrafast,
+                 superfast, veryfast, faster, fast,
+                 medium, slow, slower,
+                 veryslow(default) and placebo.
+    -q           The audio target quality(default 0.3).
+    -s, --size   The video size. Syntax like "800x600".
+    -t, --tune   The video encoder tune. It can be film, animation,
+                 grain, stillimage, psnr, ssim, fastdecode,
+                 zerolatency and touhou(default none).
+        --test   Test the first 30s stream(s).
 
 The encoder will work on CRF mode if bitrate not set.
+More info on https://github.com/caoli5288/mp4enc.
 ```
