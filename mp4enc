@@ -4,7 +4,8 @@ OPT="ab:c:n:i:p:t:q:o:s:"
 OPT_LONG="crf:,preset:,tune:,size:,test,codec:"
 
 if [[ ! $@ ]]; then
-    echo '$ mp4enc [option]... -i <input> [-o <output>]'
+    echo 'mp4enc [option]... -i <input> [-o <output>]'
+    echo
     echo '    -a           The audio stream will not be encoded(copy direct).'
     echo '    -b           The video bitrate value. Syntax like "1536k".'
     echo '    -c, --crf    The video CRF value. A float like 24(default).'
@@ -142,7 +143,7 @@ else
     if [ $NEROAE ]; then
         ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -f wav - | _audio_enc_nero
     else
-        ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -acodec aac .$STAMP.m4a
+        ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -acodec aac -q 2 .$STAMP.m4a
     fi
 fi
 
@@ -156,7 +157,7 @@ fi
 
 # Mix video and audio stream(s).
 if [ -f .$STAMP.m4a ]; then
-    ffmpeg -i .$STAMP.mp4 -i .$STAMP.m4a -vcodec copy -acodec copy $OUTPUT
+    ffmpeg -i .$STAMP.mp4 -i .$STAMP.m4a -codec copy -movflags +faststart $OUTPUT
 else
-    ffmpeg -i .$STAMP.mp4 -vcodec copy $OUTPUT
+    ffmpeg -i .$STAMP.mp4 -codec copy -movflags +faststart $OUTPUT
 fi
