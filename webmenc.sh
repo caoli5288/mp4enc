@@ -1,11 +1,16 @@
 #!/bin/bash
-# webmenc <input_file> <profile>
 
 _input=$1
 [ -f $1 ] || exit
 
 _profile=$2
 [ "_profile" ] || exit
+
+BITRATE["240"]="150k -minrate 75k -maxrate 218k"
+BITRATE["360"]="276k -minrate 138k -maxrate 400k"
+BITRATE["480"]="750k -minrate 375k -maxrate 1088k"
+BITRATE["720"]="1024k -minrate 512k -maxrate 1485k"
+BITRATE["1080"]="1800k -minrate 900k -maxrate 2610k"
 
 QUALITY["240"]="37"
 QUALITY["360"]="36"
@@ -27,21 +32,23 @@ SPEED["1080"]="2"
 
 [ "${QUALITY["$_profile"]}" ] || exit
 
+[ "$3" ] && _bitrate=${BITRATE["$_profile"]} || _bitrate=0
+
 _output=${_input%\.*}.webm
 
-while [ -f $_output ]; do
+while [ -f "$_output" ]; do
     _output=${_input%\.*}_$((++_i)).webm
 done
 
-ffmpeg -i $_input -an -vf scale=-1:$_profile -c:v libvpx-vp9 \
-  -b:v 0 -crf ${QUALITY["$_profile"]} \
+ffmpeg -i "$_input" -an -vf scale=-1:$_profile -c:v libvpx-vp9 \
+  -b:v $_bitrate -crf ${QUALITY["$_profile"]} \
   -tile-columns ${TILE["$_profile"]} \
-  -pass 1 speed 4 \
-  $_output && \
-ffmpeg -i $_input -vf scale=-1:$_profile -c:v libvpx-vp9 \
-  -b:v 0 -crf ${QUALITY["$_profile"]} \
+  -pass 1 -speed 4 \
+  "$_output" && \
+ffmpeg -i "$_input" -vf scale=-1:$_profile -c:v libvpx-vp9 \
+  -b:v $_bitrate -crf ${QUALITY["$_profile"]} \
   -tile-columns ${TILE["$_profile"]} \
-  -pass 2 speed ${SPEED["$_profile"]} \
+  -pass 2 -speed ${SPEED["$_profile"]} \
   -c:a libopus \
   -y \
-  $_output
+  "$_output"
