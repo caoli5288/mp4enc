@@ -1,7 +1,7 @@
 #!/bin/bash
 
 _input=$1
-[ -f $1 ] || exit
+[ -f "$1" ] || exit
 
 _profile=$2
 [ "_profile" ] || exit
@@ -44,7 +44,7 @@ ls ffmpeg2pass*.log || ffmpeg -i "$_input" -an -vf scale=-1:$_profile -c:v libvp
   -b:v $_bitrate -crf ${QUALITY["$_profile"]} \
   -tile-columns ${TILE["$_profile"]} \
   -pass 1 -speed 4 \
-  "$_output" || rm -f ffmpeg2pass*.log
+  "$_output" || rm -f ffmpeg2pass*.log "$_output"
 
 ls ffmpeg2pass*.log && ffmpeg -i "$_input" -vf scale=-1:$_profile -c:v libvpx-vp9 \
   -b:v $_bitrate -crf ${QUALITY["$_profile"]} \
@@ -53,4 +53,4 @@ ls ffmpeg2pass*.log && ffmpeg -i "$_input" -vf scale=-1:$_profile -c:v libvpx-vp
   -c:a libopus \
   -y \
   "$_output" && \
-rm -f ffmpeg2pass*.log
+rm -f ffmpeg2pass*.log || rm -f "$_output"
