@@ -1,72 +1,56 @@
 #!/bin/bash
 
-OPT="ab:c:n:i:p:t:q:o:s:"
-OPT_LONG="crf:,preset:,tune:,size:,test,codec:"
+CRF=23
+ENCODE=libx265
+TUNE=psnr
+PRESET=slow
 
 if [[ ! $@ ]]; then
     echo 'mp4enc [option]... -i <input> [-o <output>]'
     echo
-    echo '    -a           The audio stream will not be encoded(copy direct).'
-    echo '    -b           The video bitrate value. Syntax like "1536k".'
-    echo '    -c, --crf    The video CRF value. A float like 24(default).'
-    echo '        --codec  What library used to encode vedio(default libx264).'
-    echo '    -n           The video noise reduce. Valid rage 0-10000.'
-    echo '    -p, --preset The video encoder preset. It can be ultrafast,'
-    echo '                 superfast, veryfast, faster, fast,'
-    echo '                 medium, slow, slower,'
-    echo '                 veryslow(default) and placebo.'
-    echo '    -q           The audio target quality(default 0.3).'
-    echo '    -s, --size   The video size. Syntax like "800x600".'
-    echo '    -t, --tune   The video encoder tune. It can be film, animation,'
-    echo '                 grain, stillimage, psnr, ssim, fastdecode,'
-    echo '                 zerolatency and touhou(default none).'
-    echo '        --test   Test the first 30s stream(s).'
-    echo
-    echo 'The encoder will work on CRF mode if bitrate not set.'
-    echo 'More info on https://github.com/caoli5288/mp4enc.'
+    echo 'OPTION'
+    echo '    -a    The audio stream will be copy direct.'
+    echo "    -e    The encode. A str like $ENCODE(default)."
+    echo '    -f    The frame rate (Hz value).'
+    echo "    -c    The video CRF value. A float like $CRF(default)."
+    echo '    -n    The video noise reduce. Valid rage 0-10000.'
+    echo "    -p    The video preset. A str like $PRESET(default)."
+    echo '    -r    The video size. Syntax like "800x600".'
+    echo '    -t    The video encoder tune. A str like $TUNE(default).'
+	exit
 else
-    set -- `getopt -q -u -o $OPT --long $OPT_LONG -n 'mp4enc' -- $@`
+    set -- $(getopt -qu -o "ae:n:i:p:t:q:o:r:f:" -n 'mp4enc' -- $@)
 fi
 
-if [[ ! $@ ]]; then
-    exit 1
-fi
-
-FFMPEG=$(which ffmpeg 2> /dev/null)
-NEROAE=$(which neroAacEnc 2> /dev/null)
-
-if [ ! $FFMPEG ]; then
-  echo FFmpeg NOT found!
-  exit 3
-fi
+which ffmpeg || exit
 
 while [[ $@ ]]; do
     case $1 in
+    -f)
+        FPS=$2
+        shift 2
+	    ;;
     -a)
-        ACOPY=1
+        NOAUDIO=1
         shift 1
         ;;
     -o)
         OUTPUT=$2
         shift 2
         ;;
-    -q)
-        QUALITY=$2
-        shift 2
-        ;;
-    -c|--crf)
+    -c)
         CRF=$2
         shift 2
         ;;
-    -b)
-        BITRATE=$2
+    -e)
+        ENCODE=$2
         shift 2
         ;;
     -i)
         INPUT=$2
         shift 2
         ;;
-    -p|--preset)
+    -p)
         PRESET=$2
         shift 2
         ;;
@@ -74,26 +58,15 @@ while [[ $@ ]]; do
         NOISE=$2
         shift 2
         ;;
-    -s|--size)
+    -r)
         SIZE=$2
         shift 2
         ;;
-    -t|--tune)
+    -t)
         TUNE=$2
         shift 2
         ;;
-    --test)
-        TEST=TRUE
-        shift 1
-        ;;
-    --codec)
-        CODEC=$2
-        shift 2
-        ;;
-    --)
-        shift 1
-        ;;
-    *)
+    --|*)
         shift 1
         ;;
     esac
@@ -101,63 +74,33 @@ done
 
 if [ ! $INPUT ] || [ ! -f $INPUT ]; then
     echo 'You must specify a input file!'
-    exit '3'
+    exit
 fi
+
+trap 'rm -f .$STAMP.*' EXIT
 
 STAMP=$(date +%s)
 
-# Temp file clean up.
-trap "rm -f .$STAMP.*" EXIT
+ffmpeg -i $INPUT ${FPS:+-r $FPS} \
+	-an ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} \
+	-c:v $ENCODE \
+	-crf ${CRF:-23} ${TUNE:+-tune $TUNE} \
+	-preset $PRESET .$STAMP.mp4 || exit
 
-if [ $BITRATE ]; then
-    ffmpeg -i $INPUT \
-        -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} \
-        -pass 1 \
-        -b $BITRATE \
-        -vcodec ${CODEC:-'libx264'} \
-        -passlogfile .$STAMP.log ${TUNE:+-tune $TUNE} \
-        -f rawvideo -y /dev/null || exit 5
-    ffmpeg -i $INPUT \
-        -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} \
-        -pass 2 \
-        -b $BITRATE \
-        -vcodec ${CODEC:-'libx264'} \
-        -passlogfile .$STAMP.log ${TUNE:+-tune $TUNE} \
-        -preset ${PRESET:-'veryslow'} .$STAMP.mp4 || exit 5
+if [ $NOAUDIO ]; then
+    ffmpeg -i $INPUT -vn -c:a copy .$STAMP.m4a
 else
-    ffmpeg -i $INPUT \
-        -an ${TEST:+-t 00:00:30} ${SIZE:+-s $SIZE} ${NOISE:+-vf hqdn3d=$NOISE} \
-        -vcodec ${CODEC:-'libx264'} \
-        -crf ${CRF:-'24'} \
-        -preset ${PRESET:-'veryslow'} ${TUNE:+-tune $TUNE} .$STAMP.mp4 || exit 5
+    ffmpeg -i $INPUT -vn -c:a aac -q:a 2 .$STAMP.m4a
 fi
 
-function _audio_enc_nero() {
-    neroAacEnc -q ${QUALITY:-'0.3'} -ignorelength -if - -of .$STAMP.m4a
-}
-
-# Encode audio stream with nero's aac encoder.
-if [ $ACOPY ]; then
-    ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -acodec copy .$STAMP.m4a
-else
-    if [ $NEROAE ]; then
-        ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -f wav - | _audio_enc_nero
-    else
-        ffmpeg -i $INPUT -vn ${TEST:+-t 00:00:30} -acodec aac -q 2 .$STAMP.m4a
-    fi
-fi
-
-if [ -z $OUTPUT ]; then
-    OUTPUT=${INPUT%\.*}.mp4
-fi
+[ $OUTPUT ] || OUTPUT=${INPUT%\.*}.mp4
 
 if [ -f $OUTPUT ]; then
-    mv $OUTPUT $OUTPUT.backup
+    OUTPUT=${INPUT%\.*}_$((++_sx)).mp4
 fi
 
-# Mix video and audio stream(s).
 if [ -f .$STAMP.m4a ]; then
-    ffmpeg -i .$STAMP.mp4 -i .$STAMP.m4a -codec copy -movflags +faststart $OUTPUT
+    ffmpeg -i .$STAMP.mp4 -i .$STAMP.m4a -c copy -movflags +faststart $OUTPUT
 else
-    ffmpeg -i .$STAMP.mp4 -codec copy -movflags +faststart $OUTPUT
+    ffmpeg -i .$STAMP.mp4 -c copy -movflags +faststart $OUTPUT
 fi
