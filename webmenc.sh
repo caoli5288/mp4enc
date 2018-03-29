@@ -40,7 +40,7 @@ while [ -f "$_output" ]; do
     _output=${_input%\.*}_$((++_i)).webm
 done
 
-[ "$FFVF" ] && FFVF="-vf scale=-1:$_profile,$FFVF" || FFVF="-vf scale=-1:$_profile"
+[ "$FFVF" ] && FFVF="-vf $FFVF,scale=-1:$_profile" || FFVF="-vf scale=-1:$_profile"
 
 ls ffmpeg2pass*.log || ffmpeg -i "$_input" $FFOPT -an $FFVF -c:v libvpx-vp9 \
   -b:v $_bitrate -crf ${QUALITY["$_profile"]} \
