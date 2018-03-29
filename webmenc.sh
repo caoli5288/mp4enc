@@ -40,13 +40,15 @@ while [ -f "$_output" ]; do
     _output=${_input%\.*}_$((++_i)).webm
 done
 
-ls ffmpeg2pass*.log || ffmpeg -i "$_input" -an -vf scale=-1:$_profile -c:v libvpx-vp9 \
+[ "$FFVF" ] && FFVF="-vf scale=-1:$_profile,$FFVF" || FFVF="-vf scale=-1:$_profile"
+
+ls ffmpeg2pass*.log || ffmpeg -i "$_input" $FFOPT -an $FFVF -c:v libvpx-vp9 \
   -b:v $_bitrate -crf ${QUALITY["$_profile"]} \
   -tile-columns ${TILE["$_profile"]} \
   -pass 1 -speed 4 \
   "$_output" || rm -f ffmpeg2pass*.log "$_output"
 
-ls ffmpeg2pass*.log && ffmpeg -i "$_input" -vf scale=-1:$_profile -c:v libvpx-vp9 \
+ls ffmpeg2pass*.log && ffmpeg -i "$_input" $FFOPT $FFVF -c:v libvpx-vp9 \
   -b:v $_bitrate -crf ${QUALITY["$_profile"]} \
   -tile-columns ${TILE["$_profile"]} \
   -pass 2 -speed ${SPEED["$_profile"]} \
