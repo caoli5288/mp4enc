@@ -9,24 +9,28 @@ _profile=$2
 BITRATE["240"]="150k -minrate 75k -maxrate 218k"
 BITRATE["360"]="276k -minrate 138k -maxrate 400k"
 BITRATE["480"]="750k -minrate 375k -maxrate 1088k"
+BITRATE["540"]="850k -minrate 425k -maxrate 1250k"
 BITRATE["720"]="1024k -minrate 512k -maxrate 1485k"
 BITRATE["1080"]="1800k -minrate 900k -maxrate 2610k"
 
 QUALITY["240"]="37"
 QUALITY["360"]="36"
 QUALITY["480"]="33"
+QUALITY["540"]="33"
 QUALITY["720"]="32"
 QUALITY["1080"]="31"
 
 TILE["240"]="0 -threads 2"
 TILE["360"]="1 -threads 4"
 TILE["480"]="1 -threads 4"
+TILE["540"]="1 -threads 4"
 TILE["720"]="2 -threads 8"
 TILE["1080"]="2 -threads 8"
 
 SPEED["240"]="1"
 SPEED["360"]="1"
 SPEED["480"]="1"
+SPEED["540"]="1"
 SPEED["720"]="2"
 SPEED["1080"]="2"
 
